@@ -25,7 +25,7 @@ void marker_action(ros::Publisher marker_pub, double x, double y, int action)
   marker.ns = "basic_shapes";
   marker.id = 0;
 
-  marker.type = visualization_msgs::Marker::SPHERE;
+  marker.type = visualization_msgs::Marker::CUBE;
 
   // Set the marker action.  Options are ADD, DELETE, and new in ROS Indigo: 3 (DELETEALL)
   marker.action = action;
@@ -40,9 +40,9 @@ void marker_action(ros::Publisher marker_pub, double x, double y, int action)
   marker.pose.orientation.w = 0.0;
 
   // Set the scale of the marker -- 1x1x1 here means 1m on a side
-  marker.scale.x = 0.2;
-  marker.scale.y = 0.2;
-  marker.scale.z = 0.2;
+  marker.scale.x = 0.3;
+  marker.scale.y = 0.3;
+  marker.scale.z = 0.3;
 
   // Set the color -- be sure to set alpha to something non-zero!
   marker.color.r = 0.0f;
@@ -61,7 +61,8 @@ bool is_robot_at_position(vector<double> position)
 
 void move_base_status_callback(const actionlib_msgs::GoalStatusArray status)
 {
-  //ROS_INFO("Status %d", status.status_list[0].status);
+  if (status.status_list.size() == 0) return;
+  
   switch (status.status_list[0].status) 
   {
     case actionlib_msgs::GoalStatus::SUCCEEDED:
@@ -69,8 +70,14 @@ void move_base_status_callback(const actionlib_msgs::GoalStatusArray status)
       {
         ROS_INFO("Goal reached by the robot. Last position (%1.02f, %1.02f)", last_position[0], last_position[1]);
         goal_reached = true;
-        if (is_robot_at_position(pickup_position)) marker_action(marker_pub, pickup_position[0], pickup_position[1], visualization_msgs::Marker::DELETE);
-        if (is_robot_at_position(drop_position)) marker_action(marker_pub, drop_position[0], drop_position[1], visualization_msgs::Marker::ADD);
+        if (is_robot_at_position(pickup_position)) 
+        {
+          marker_action(marker_pub, pickup_position[0], pickup_position[1], visualization_msgs::Marker::DELETE);
+        }
+        if (is_robot_at_position(drop_position)) 
+        {
+          marker_action(marker_pub, drop_position[0], drop_position[1], visualization_msgs::Marker::ADD);
+        }
       }
       break;
     default:
@@ -90,13 +97,12 @@ int main( int argc, char** argv )
   ros::init(argc, argv, "add_markers");
   ros::NodeHandle n;
   ros::Rate r(1);
-  
+
   // Subscribe to status of the robot
   ros::Subscriber sub_status = n.subscribe("/move_base/status", 10, move_base_status_callback);
   ros::Subscriber sub_feedback = n.subscribe("/move_base/feedback", 10, move_base_feedback_callback);
-  
-  marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
 
+  marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
   // Publish the marker
   while (marker_pub.getNumSubscribers() < 1)
   {
@@ -107,7 +113,8 @@ int main( int argc, char** argv )
     ROS_WARN_ONCE("Please create a subscriber to the marker");
     sleep(1);
   }
-  
+    
+  ROS_INFO("Display the marker at pickup position: (%1.02f, %1.02f)", pickup_position[0], pickup_position[1]);
   // Display marker at pickup position
   marker_action(marker_pub, pickup_position[0], pickup_position[1], visualization_msgs::Marker::ADD);
 
